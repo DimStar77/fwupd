@@ -137,6 +137,18 @@ class EnumObj:
         if indexed:
             raise ValueError(f"enum {self.name} does not need explicit defaults")
 
+        # check they're not ALL_CAPS
+        all_caps: bool = True
+        valid: bool = False
+        for item in self.items:
+            if len(item.name) > 4:
+                valid = True
+            if item.name != item.name.upper():
+                all_caps = False
+                break
+        if valid and all_caps:
+            raise ValueError(f"enum {self.name} only had uppercase items")
+
     def item(self, name: str) -> Optional["EnumItem"]:
         for item in self.items:
             if item.name == name:
