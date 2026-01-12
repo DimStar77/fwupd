@@ -34,7 +34,13 @@ enum FuTpmEventlogItemKind {
     EfiVariableAuthority = 0x800000e0,
 }
 
-#[derive(Parse)]
+#[derive(ParseStream, Default)]
+#[repr(C, packed)]
+struct FuStructTpmEventLog2Hdr {
+    signature: [char; 16] == "Spec ID Event03",
+}
+
+#[derive(ParseStream)]
 #[repr(C, packed)]
 struct FuStructTpmEventLog2 {
     pcr: u32le,
@@ -49,11 +55,12 @@ struct FuStructTpmEfiStartupLocalityEvent {
     locality: u8,    // from which TPM2_Startup() was issued -- which is the initial value of PCR0
 }
 
-#[derive(Parse)]
+#[derive(ParseStream)]
 #[repr(C, packed)]
 struct FuStructTpmEventLog1Item {
     pcr: u32le,
     event_type: u32le,
     digest: [u8; 20],
     datasz: u32le,
+    // data: [u8; datasz],
 }

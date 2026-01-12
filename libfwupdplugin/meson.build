@@ -194,6 +194,7 @@ fwupdplugin_src = [
   'fu-string.c', # fuzzing
   'fu-sum.c', # fuzzing
   'fu-tpm-eventlog-item.c', # fuzzing
+  'fu-tpm-eventlog.c', # fuzzing
   'fu-tpm-eventlog-v1.c', # fuzzing
   'fu-tpm-eventlog-v2.c', # fuzzing
   'fu-udev-device.c', # fuzzing
@@ -352,6 +353,7 @@ fwupdplugin_headers = [
   'fu-string.h',
   'fu-sum.h',
   'fu-tpm-eventlog-item.h',
+  'fu-tpm-eventlog.h',
   'fu-tpm-eventlog-v1.h',
   'fu-tpm-eventlog-v2.h',
   'fu-udev-device.h',

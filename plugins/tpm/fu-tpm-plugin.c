@@ -6,7 +6,7 @@
 
 #include "config.h"
 
-#include "fu-tpm-eventlog-parser.h"
+#include "fu-tpm-eventlog-common.h"
 #include "fu-tpm-plugin.h"
 #include "fu-tpm-v1-device.h"
 #include "fu-tpm-v2-device.h"
@@ -15,7 +15,7 @@ struct _FuTpmPlugin {
 	FuPlugin parent_instance;
 	FuTpmDevice *tpm_device;
 	FuDevice *bios_device;
-	GPtrArray *ev_items; /* of FuTpmEventlogItem */
+	FuTpmEventlog *eventlog;
 };
 
 G_DEFINE_TYPE(FuTpmPlugin, fu_tpm_plugin, FU_TYPE_PLUGIN)
@@ -153,13 +153,13 @@ fu_tpm_plugin_add_security_attr_eventlog(FuPlugin *plugin, FuSecurityAttrs *attr
 	fu_security_attrs_append(attrs, attr);
 
 	/* check reconstructed to PCR0 */
-	if (self->ev_items == NULL) {
+	if (self->eventlog == NULL) {
 		fwupd_security_attr_set_result(attr, FWUPD_SECURITY_ATTR_RESULT_NOT_FOUND);
 		return;
 	}
 
 	/* calculate from the eventlog */
-	pcr0s_calc = fu_tpm_eventlog_calc_checksums(self->ev_items, 0, &error);
+	pcr0s_calc = fu_tpm_eventlog_calc_checksums(self->eventlog, 0, &error);
 	if (pcr0s_calc == NULL) {
 		g_warning("failed to get eventlog reconstruction: %s", error->message);
 		fwupd_security_attr_set_result(attr, FWUPD_SECURITY_ATTR_RESULT_NOT_VALID);
@@ -256,9 +256,10 @@ fu_tpm_plugin_eventlog_report_metadata(FuPlugin *plugin)
 	FuTpmPlugin *self = FU_TPM_PLUGIN(plugin);
 	GString *str = g_string_new("");
 	g_autoptr(GPtrArray) pcrs = NULL;
+	g_autoptr(GPtrArray) items = fu_firmware_get_images(FU_FIRMWARE(self->eventlog));
 
-	for (guint i = 0; i < self->ev_items->len; i++) {
-		FuTpmEventlogItem *item = g_ptr_array_index(self->ev_items, i);
+	for (guint i = 0; i < items->len; i++) {
+		FuTpmEventlogItem *item = g_ptr_array_index(items, i);
 		FuTpmEventlogItemKind kind = fu_tpm_eventlog_item_get_kind(item);
 		g_autofree gchar *blobstr = NULL;
 		g_autofree gchar *checksum = NULL;
@@ -284,7 +285,7 @@ fu_tpm_plugin_eventlog_report_metadata(FuPlugin *plugin)
 			g_string_append_printf(str, " [%s]", blobstr);
 		g_string_append(str, "\n");
 	}
-	pcrs = fu_tpm_eventlog_calc_checksums(self->ev_items, 0, NULL);
+	pcrs = fu_tpm_eventlog_calc_checksums(self->eventlog, 0, NULL);
 	if (pcrs != NULL) {
 		for (guint j = 0; j < pcrs->len; j++) {
 			const gchar *csum = g_ptr_array_index(pcrs, j);
@@ -300,10 +301,10 @@ static gboolean
 fu_tpm_plugin_coldplug_eventlog(FuPlugin *plugin, GError **error)
 {
 	FuTpmPlugin *self = FU_TPM_PLUGIN(plugin);
-	gsize bufsz = 0;
+	g_autoptr(FuFirmware) eventlog = NULL;
+	g_autoptr(GInputStream) stream = NULL;
 	g_autofree gchar *fn = NULL;
 	g_autofree gchar *str = NULL;
-	g_autofree guint8 *buf = NULL;
 
 	/* do not show a warning if no TPM exists, or the kernel is too old */
 	fn = fu_path_build(FU_PATH_KIND_SYSFSDIR,
@@ -316,20 +317,19 @@ fu_tpm_plugin_coldplug_eventlog(FuPlugin *plugin, GError **error)
 		g_debug("no %s, so skipping", fn);
 		return TRUE;
 	}
-	if (!g_file_get_contents(fn, (gchar **)&buf, &bufsz, error))
+	stream = fu_input_stream_from_path(fn, error);
+	if (stream == NULL)
 		return FALSE;
-	if (bufsz == 0) {
-		g_set_error(error,
-			    FWUPD_ERROR,
-			    FWUPD_ERROR_INVALID_FILE,
-			    "failed to read data from %s",
-			    fn);
+	eventlog = fu_firmware_new_from_gtypes(stream,
+					       0x0,
+					       FU_FIRMWARE_PARSE_FLAG_NONE,
+					       error,
+					       FU_TYPE_TPM_EVENTLOG_V2,
+					       FU_TYPE_TPM_EVENTLOG_V1,
+					       G_TYPE_INVALID);
+	if (eventlog == NULL)
 		return FALSE;
-	}
-	self->ev_items =
-	    fu_tpm_eventlog_parser_new(buf, bufsz, FU_TPM_EVENTLOG_PARSER_FLAG_NONE, error);
-	if (self->ev_items == NULL)
-		return FALSE;
+	self->eventlog = FU_TPM_EVENTLOG(eventlog);
 
 	/* add optional report metadata */
 	str = fu_tpm_plugin_eventlog_report_metadata(plugin);
@@ -403,8 +403,8 @@ fu_tpm_plugin_finalize(GObject *obj)
 		g_object_unref(self->tpm_device);
 	if (self->bios_device != NULL)
 		g_object_unref(self->bios_device);
-	if (self->ev_items != NULL)
-		g_ptr_array_unref(self->ev_items);
+	if (self->eventlog != NULL)
+		g_object_unref(self->eventlog);
 	G_OBJECT_CLASS(fu_tpm_plugin_parent_class)->finalize(obj);
 }
 

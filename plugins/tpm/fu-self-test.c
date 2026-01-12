@@ -10,7 +10,6 @@
 #include "fu-plugin-private.h"
 #include "fu-security-attrs-private.h"
 #include "fu-tpm-eventlog-common.h"
-#include "fu-tpm-eventlog-parser.h"
 #include "fu-tpm-plugin.h"
 #include "fu-tpm-v1-device.h"
 #include "fu-tpm-v2-device.h"

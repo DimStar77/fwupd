@@ -14,7 +14,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "fu-tpm-eventlog-parser.h"
 
 typedef struct {
 	gint pcr;

@@ -14,7 +14,6 @@ plugin_builtin_tpm = static_library('fu_plugin_tpm',
     'fu-tpm-v1-device.c',
     'fu-tpm-v2-device.c',
     'fu-tpm-eventlog-common.c',
-    'fu-tpm-eventlog-parser.c',
   ],
   include_directories: plugin_incdirs,
   link_with: [

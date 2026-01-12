@@ -6,11 +6,11 @@
 
 #pragma once
 
-#include "fu-firmware.h"
+#include "fu-tpm-eventlog.h"
 
 #define FU_TYPE_TPM_EVENTLOG_V2 (fu_tpm_eventlog_v2_get_type())
 
-G_DECLARE_FINAL_TYPE(FuTpmEventlogV2, fu_tpm_eventlog_v2, FU, TPM_EVENTLOG_V2, FuFirmware)
+G_DECLARE_FINAL_TYPE(FuTpmEventlogV2, fu_tpm_eventlog_v2, FU, TPM_EVENTLOG_V2, FuTpmEventlog)
 
 FuTpmEventlogV2 *
 fu_tpm_eventlog_v2_new(void);
