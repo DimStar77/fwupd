@@ -38,7 +38,6 @@ if get_option('tests')
   env.set('LSAN_OPTIONS', 'suppressions=@0@'.format(join_paths(meson.project_source_root(), 'data', 'tests', 'lsan-suppressions.txt')))
   e = executable(
     'tpm-self-test',
-    rustgen.process('fu-tpm.rs'),
     sources: [
       'fu-self-test.c',
     ],
@@ -86,7 +85,6 @@ endif
 
 executable(
   'fwupdtpmevlog',
-  rustgen.process('fu-tpm.rs'),
   sources: [
     'fu-tpm-eventlog.c',
   ],

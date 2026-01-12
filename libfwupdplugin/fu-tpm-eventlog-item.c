@@ -25,7 +25,7 @@ G_DEFINE_TYPE(FuTpmEventlogItem, fu_tpm_eventlog_item, FU_TYPE_FIRMWARE)
  * fu_tpm_eventlog_item_add_checksum:
  * @self: a #FuTpmEventlogItem
  * @csum_kind: a #GChecksumType, e.g. %G_CHECKSUM_SHA1
- * @checksum: a #GBytes of the checksum
+ * @checksum: a #GBytes of the raw checksum
  *
  * Adds the checksum of a specific type.
  *
@@ -38,11 +38,21 @@ fu_tpm_eventlog_item_add_checksum(FuTpmEventlogItem *self,
 {
 	g_return_if_fail(FU_IS_TPM_EVENTLOG_ITEM(self));
 	g_return_if_fail(csum_kind <= G_CHECKSUM_SHA384);
-	g_return_if_fail(value != NULL);
+	g_return_if_fail(checksum != NULL);
 
 	if (self->checksums[csum_kind] != NULL)
 		g_bytes_unref(self->checksums[csum_kind]);
 	self->checksums[csum_kind] = g_bytes_ref(checksum);
+}
+
+GBytes *
+fu_tpm_eventlog_item_get_checksum(FuTpmEventlogItem *self, GChecksumType csum_kind, GError **error)
+{
+	if (self->checksums[csum_kind] == NULL) {
+		g_set_error_literal(error, FWUPD_ERROR, FWUPD_ERROR_NOT_SUPPORTED, "not set");
+		return NULL;
+	}
+	return g_bytes_ref(self->checksums[csum_kind]);
 }
 
 /**
@@ -112,7 +122,9 @@ fu_tpm_eventlog_item_set_pcr(FuTpmEventlogItem *self, guint8 pcr)
 }
 
 static gchar *
-fu_tpm_eventlog_item_get_checksum(FuFirmware *firmware, GChecksumType csum_kind, GError **error)
+fu_tpm_eventlog_item_get_checksum_string(FuFirmware *firmware,
+					 GChecksumType csum_kind,
+					 GError **error)
 {
 	FuTpmEventlogItem *self = FU_TPM_EVENTLOG_ITEM(firmware);
 
@@ -179,7 +191,7 @@ fu_tpm_eventlog_item_class_init(FuTpmEventlogItemClass *klass)
 	FuFirmwareClass *firmware_class = FU_FIRMWARE_CLASS(klass);
 	GObjectClass *object_class = G_OBJECT_CLASS(klass);
 	object_class->finalize = fu_tpm_eventlog_item_finalize;
-	firmware_class->get_checksum = fu_tpm_eventlog_item_get_checksum;
+	firmware_class->get_checksum = fu_tpm_eventlog_item_get_checksum_string;
 	firmware_class->build = fu_tpm_eventlog_item_build;
 	firmware_class->export = fu_tpm_eventlog_item_export;
 }

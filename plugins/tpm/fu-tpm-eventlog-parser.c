@@ -30,7 +30,7 @@ fu_tpm_eventlog_parser_parse_blob_v2(const guint8 *buf,
 				    G_LITTLE_ENDIAN,
 				    error))
 		return NULL;
-	items = g_ptr_array_new_with_free_func((GDestroyNotify)fu_tpm_eventlog_parser_item_free);
+	items = g_ptr_array_new_with_free_func((GDestroyNotify)g_object_unref);
 	for (gsize idx = FU_STRUCT_TPM_EVENT_LOG1_ITEM_SIZE + hdrsz; idx < bufsz;) {
 		guint32 pcr;
 		guint32 digestcnt;
@@ -117,14 +117,27 @@ fu_tpm_eventlog_parser_parse_blob_v2(const guint8 *buf,
 			g_autoptr(FuTpmEventlogItem) item = NULL;
 
 			/* build item */
-			item = fu_tpm_eventlog_item_new;
-			item->pcr = pcr;
-			item->kind = fu_struct_tpm_event_log2_get_type(st);
-			item->checksum_sha1 = g_steal_pointer(&checksum_sha1);
-			item->checksum_sha256 = g_steal_pointer(&checksum_sha256);
-			item->checksum_sha384 = g_steal_pointer(&checksum_sha384);
+			item = fu_tpm_eventlog_item_new();
+			fu_tpm_eventlog_item_set_pcr(item, pcr);
+			fu_tpm_eventlog_item_set_kind(item, fu_struct_tpm_event_log2_get_type(st));
+			if (checksum_sha1 != NULL) {
+				fu_tpm_eventlog_item_add_checksum(item,
+								  G_CHECKSUM_SHA1,
+								  checksum_sha1);
+			}
+			if (checksum_sha256 != NULL) {
+				fu_tpm_eventlog_item_add_checksum(item,
+								  G_CHECKSUM_SHA256,
+								  checksum_sha256);
+			}
+			if (checksum_sha384 != NULL) {
+				fu_tpm_eventlog_item_add_checksum(item,
+								  G_CHECKSUM_SHA384,
+								  checksum_sha384);
+			}
 			if (datasz > 0) {
 				g_autofree guint8 *data = g_malloc0(datasz);
+				g_autoptr(GBytes) blob = NULL;
 				if (!fu_memcpy_safe(data,
 						    datasz,
 						    0x0, /* dst */
@@ -134,8 +147,9 @@ fu_tpm_eventlog_parser_parse_blob_v2(const guint8 *buf,
 						    datasz, /* src */
 						    error))
 					return NULL;
-				item_blob = g_bytes_new_take(g_steal_pointer(&data), datasz);
-				fu_dump_bytes(G_LOG_DOMAIN, "TpmEvent", item_blob);
+				blob = g_bytes_new_take(g_steal_pointer(&data), datasz);
+				fu_firmware_set_bytes(FU_FIRMWARE(item), blob);
+				fu_dump_bytes(G_LOG_DOMAIN, "TpmEvent", blob);
 			}
 			g_ptr_array_add(items, g_steal_pointer(&item));
 		}
@@ -173,7 +187,7 @@ fu_tpm_eventlog_parser_new(const guint8 *buf,
 		return fu_tpm_eventlog_parser_parse_blob_v2(buf, bufsz, flags, error);
 
 	/* assume v1 structure */
-	items = g_ptr_array_new_with_free_func((GDestroyNotify)fu_tpm_eventlog_parser_item_free);
+	items = g_ptr_array_new_with_free_func((GDestroyNotify)g_object_unref);
 	for (gsize idx = 0; idx < bufsz; idx += FU_STRUCT_TPM_EVENT_LOG1_ITEM_SIZE) {
 		guint32 datasz = 0;
 		guint32 pcr = 0;
@@ -194,18 +208,20 @@ fu_tpm_eventlog_parser_new(const guint8 *buf,
 			return NULL;
 		}
 		if (pcr == ESYS_TR_PCR0 || flags & FU_TPM_EVENTLOG_PARSER_FLAG_ALL_PCRS) {
-			g_autoptr(FuTpmEventlogItem) item = NULL;
+			g_autoptr(FuTpmEventlogItem) item = fu_tpm_eventlog_item_new();
 			gsize digestsz = 0;
 			const guint8 *digest =
 			    fu_struct_tpm_event_log1_item_get_digest(st, &digestsz);
+			g_autoptr(GBytes) checksum_sha1 = NULL;
 
 			/* build item */
-			item = fu_tpm_eventlog_item_new();
 			fu_tpm_eventlog_item_set_pcr(item, pcr);
 			fu_tpm_eventlog_item_set_kind(item, event_type);
-			item->checksum_sha1 = g_bytes_new(digest, digestsz);
+			checksum_sha1 = g_bytes_new(digest, digestsz);
+			fu_tpm_eventlog_item_add_checksum(item, G_CHECKSUM_SHA1, checksum_sha1);
 			if (datasz > 0) {
 				g_autofree guint8 *data = g_malloc0(datasz);
+				g_autoptr(GBytes) blob = NULL;
 				if (!fu_memcpy_safe(data,
 						    datasz,
 						    0x0, /* dst */
@@ -215,8 +231,9 @@ fu_tpm_eventlog_parser_new(const guint8 *buf,
 						    datasz,
 						    error))
 					return NULL;
-				item_blob = g_bytes_new_take(g_steal_pointer(&data), datasz);
-				fu_dump_bytes(G_LOG_DOMAIN, "TpmEvent", item_blob);
+				blob = g_bytes_new_take(g_steal_pointer(&data), datasz);
+				fu_firmware_set_bytes(FU_FIRMWARE(item), blob);
+				fu_dump_bytes(G_LOG_DOMAIN, "TpmEvent", blob);
 			}
 			g_ptr_array_add(items, g_steal_pointer(&item));
 		}

@@ -22,7 +22,7 @@ typedef struct {
 } FuUtil;
 
 static FuUtil *
-fu_tpm_eventlog_new(void)
+fu_tpm_eventlog_cli_new(void)
 {
 	FuUtil *self = g_new0(FuUtil, 1);
 	self->pcr = -1;
@@ -42,9 +42,9 @@ fu_tpm_eventlog_sort_cb(gconstpointer a, gconstpointer b)
 {
 	FuTpmEventlogItem *item_a = *((FuTpmEventlogItem **)a);
 	FuTpmEventlogItem *item_b = *((FuTpmEventlogItem **)b);
-	if (item_a->pcr > item_b->pcr)
+	if (fu_tpm_eventlog_item_get_pcr(item_a) > fu_tpm_eventlog_item_get_pcr(item_b))
 		return 1;
-	if (item_a->pcr < item_b->pcr)
+	if (fu_tpm_eventlog_item_get_pcr(item_a) < fu_tpm_eventlog_item_get_pcr(item_b))
 		return -1;
 	return 0;
 }
@@ -68,15 +68,23 @@ fu_tpm_eventlog_process(FuUtil *self, const gchar *fn, GError **error)
 
 	for (guint i = 0; i < items->len; i++) {
 		FuTpmEventlogItem *item = g_ptr_array_index(items, i);
-		if (item->pcr > max_pcr)
-			max_pcr = item->pcr;
-		if (self->pcr >= 0 && item->pcr != self->pcr)
+		g_autofree gchar *tmp = NULL;
+		if (fu_tpm_eventlog_item_get_pcr(item) > max_pcr)
+			max_pcr = fu_tpm_eventlog_item_get_pcr(item);
+		if (self->pcr >= 0 && fu_tpm_eventlog_item_get_pcr(item) != self->pcr)
 			continue;
-		fu_tpm_eventlog_item_to_string(item, 0, str);
-		g_string_append(str, "\n");
+		tmp = fu_firmware_to_string(FU_FIRMWARE(item));
+		g_string_append_printf(str, "%s\n", tmp);
 		if (self->dump) {
 			g_autofree gchar *blobfn =
-			    g_strdup_printf("tpm-pcr%02u-%03u.bin", item->pcr, i);
+			    g_strdup_printf("tpm-pcr%02u-%03u.bin",
+					    fu_tpm_eventlog_item_get_pcr(item),
+					    i);
+			g_autoptr(GBytes) item_blob = NULL;
+
+			item_blob = fu_firmware_get_bytes(FU_FIRMWARE(item), error);
+			if (item_blob == NULL)
+				return FALSE;
 			if (!fu_bytes_set_contents(blobfn, item_blob, error))
 				return FALSE;
 		}
@@ -117,7 +125,7 @@ main(int argc, char *argv[])
 	const gchar *fn;
 	gboolean verbose = FALSE;
 	gboolean interactive = isatty(fileno(stdout)) != 0;
-	g_autoptr(FuUtil) self = fu_tpm_eventlog_new();
+	g_autoptr(FuUtil) self = fu_tpm_eventlog_cli_new();
 	g_autoptr(GError) error = NULL;
 	g_autoptr(GOptionContext) context = g_option_context_new(NULL);
 	const GOptionEntry options[] = {

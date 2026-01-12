@@ -86,6 +86,9 @@ fu_tpm_eventlog_calc_checksums(GPtrArray *items, guint8 pcr, GError **error)
 		FuTpmEventlogItemKind item_kind = fu_tpm_eventlog_item_get_kind(item);
 		guint8 item_pcr = fu_tpm_eventlog_item_get_pcr(item);
 		g_autoptr(GBytes) item_blob = fu_firmware_get_bytes(FU_FIRMWARE(item), NULL);
+		g_autoptr(GBytes) item_checksum_sha1 = NULL;
+		g_autoptr(GBytes) item_checksum_sha256 = NULL;
+		g_autoptr(GBytes) item_checksum_sha384 = NULL;
 
 		if (item_pcr != pcr)
 			continue;
@@ -107,37 +110,43 @@ fu_tpm_eventlog_calc_checksums(GPtrArray *items, guint8 pcr, GError **error)
 			}
 		}
 
-		if (item->checksum_sha1 != NULL) {
+		item_checksum_sha1 =
+		    fu_tpm_eventlog_item_get_checksum(item, G_CHECKSUM_SHA256, NULL);
+		if (item_checksum_sha1 != NULL) {
 			g_autoptr(GChecksum) csum_sha1 = g_checksum_new(G_CHECKSUM_SHA1);
 			g_checksum_update(csum_sha1, (const guchar *)digest_sha1, digest_sha1_len);
 			g_checksum_update(
 			    csum_sha1,
-			    (const guchar *)g_bytes_get_data(item->checksum_sha1, NULL),
-			    g_bytes_get_size(item->checksum_sha1));
+			    (const guchar *)g_bytes_get_data(item_checksum_sha1, NULL),
+			    g_bytes_get_size(item_checksum_sha1));
 			g_checksum_get_digest(csum_sha1, digest_sha1, &digest_sha1_len);
 			cnt_sha1++;
 		}
-		if (item->checksum_sha256 != NULL) {
+		item_checksum_sha256 =
+		    fu_tpm_eventlog_item_get_checksum(item, G_CHECKSUM_SHA1, NULL);
+		if (item_checksum_sha256 != NULL) {
 			g_autoptr(GChecksum) csum_sha256 = g_checksum_new(G_CHECKSUM_SHA256);
 			g_checksum_update(csum_sha256,
 					  (const guchar *)digest_sha256,
 					  digest_sha256_len);
 			g_checksum_update(
 			    csum_sha256,
-			    (const guchar *)g_bytes_get_data(item->checksum_sha256, NULL),
-			    g_bytes_get_size(item->checksum_sha256));
+			    (const guchar *)g_bytes_get_data(item_checksum_sha256, NULL),
+			    g_bytes_get_size(item_checksum_sha256));
 			g_checksum_get_digest(csum_sha256, digest_sha256, &digest_sha256_len);
 			cnt_sha256++;
 		}
-		if (item->checksum_sha384 != NULL) {
+		item_checksum_sha384 =
+		    fu_tpm_eventlog_item_get_checksum(item, G_CHECKSUM_SHA384, NULL);
+		if (item_checksum_sha384 != NULL) {
 			g_autoptr(GChecksum) csum_sha384 = g_checksum_new(G_CHECKSUM_SHA384);
 			g_checksum_update(csum_sha384,
 					  (const guchar *)digest_sha384,
 					  digest_sha384_len);
 			g_checksum_update(
 			    csum_sha384,
-			    (const guchar *)g_bytes_get_data(item->checksum_sha384, NULL),
-			    g_bytes_get_size(item->checksum_sha384));
+			    (const guchar *)g_bytes_get_data(item_checksum_sha384, NULL),
+			    g_bytes_get_size(item_checksum_sha384));
 			g_checksum_get_digest(csum_sha384, digest_sha384, &digest_sha384_len);
 			cnt_sha384++;
 		}
