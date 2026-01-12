@@ -13,51 +13,6 @@
 
 #define FU_TPM_EVENTLOG_V2_HDR_SIGNATURE "Spec ID Event03"
 
-static void
-fu_tpm_eventlog_parser_item_free(FuTpmEventlogItem *item)
-{
-	if (item->blob != NULL)
-		g_bytes_unref(item->blob);
-	if (item->checksum_sha1 != NULL)
-		g_bytes_unref(item->checksum_sha1);
-	if (item->checksum_sha256 != NULL)
-		g_bytes_unref(item->checksum_sha256);
-	if (item->checksum_sha384 != NULL)
-		g_bytes_unref(item->checksum_sha384);
-	g_free(item);
-}
-
-G_DEFINE_AUTOPTR_CLEANUP_FUNC(FuTpmEventlogItem, fu_tpm_eventlog_parser_item_free);
-
-void
-fu_tpm_eventlog_item_to_string(FuTpmEventlogItem *item, guint idt, GString *str) /* nocheck:name */
-{
-	const gchar *tmp;
-	g_autofree gchar *pcrstr =
-	    g_strdup_printf("%s (%u)", fu_tpm_eventlog_pcr_to_string(item->pcr), item->pcr);
-	fwupd_codec_string_append(str, idt, "PCR", pcrstr);
-	fwupd_codec_string_append_hex(str, idt, "Type", item->kind);
-	tmp = fu_tpm_eventlog_item_kind_to_string(item->kind);
-	fwupd_codec_string_append(str, idt, "Description", tmp);
-	if (item->checksum_sha1 != NULL) {
-		g_autofree gchar *csum = fu_bytes_to_string(item->checksum_sha1);
-		fwupd_codec_string_append(str, idt, "ChecksumSha1", csum);
-	}
-	if (item->checksum_sha256 != NULL) {
-		g_autofree gchar *csum = fu_bytes_to_string(item->checksum_sha256);
-		fwupd_codec_string_append(str, idt, "ChecksumSha256", csum);
-	}
-	if (item->checksum_sha384 != NULL) {
-		g_autofree gchar *csum = fu_bytes_to_string(item->checksum_sha384);
-		fwupd_codec_string_append(str, idt, "ChecksumSha384", csum);
-	}
-	if (item->blob != NULL) {
-		g_autofree gchar *blobstr = fu_tpm_eventlog_blobstr(item->blob);
-		if (blobstr != NULL)
-			fwupd_codec_string_append(str, idt, "BlobStr", blobstr);
-	}
-}
-
 static GPtrArray *
 fu_tpm_eventlog_parser_parse_blob_v2(const guint8 *buf,
 				     gsize bufsz,
@@ -162,7 +117,7 @@ fu_tpm_eventlog_parser_parse_blob_v2(const guint8 *buf,
 			g_autoptr(FuTpmEventlogItem) item = NULL;
 
 			/* build item */
-			item = g_new0(FuTpmEventlogItem, 1);
+			item = fu_tpm_eventlog_item_new;
 			item->pcr = pcr;
 			item->kind = fu_struct_tpm_event_log2_get_type(st);
 			item->checksum_sha1 = g_steal_pointer(&checksum_sha1);
@@ -179,8 +134,8 @@ fu_tpm_eventlog_parser_parse_blob_v2(const guint8 *buf,
 						    datasz, /* src */
 						    error))
 					return NULL;
-				item->blob = g_bytes_new_take(g_steal_pointer(&data), datasz);
-				fu_dump_bytes(G_LOG_DOMAIN, "TpmEvent", item->blob);
+				item_blob = g_bytes_new_take(g_steal_pointer(&data), datasz);
+				fu_dump_bytes(G_LOG_DOMAIN, "TpmEvent", item_blob);
 			}
 			g_ptr_array_add(items, g_steal_pointer(&item));
 		}
@@ -245,9 +200,9 @@ fu_tpm_eventlog_parser_new(const guint8 *buf,
 			    fu_struct_tpm_event_log1_item_get_digest(st, &digestsz);
 
 			/* build item */
-			item = g_new0(FuTpmEventlogItem, 1);
-			item->pcr = pcr;
-			item->kind = event_type;
+			item = fu_tpm_eventlog_item_new();
+			fu_tpm_eventlog_item_set_pcr(item, pcr);
+			fu_tpm_eventlog_item_set_kind(item, event_type);
 			item->checksum_sha1 = g_bytes_new(digest, digestsz);
 			if (datasz > 0) {
 				g_autofree guint8 *data = g_malloc0(datasz);
@@ -260,8 +215,8 @@ fu_tpm_eventlog_parser_new(const guint8 *buf,
 						    datasz,
 						    error))
 					return NULL;
-				item->blob = g_bytes_new_take(g_steal_pointer(&data), datasz);
-				fu_dump_bytes(G_LOG_DOMAIN, "TpmEvent", item->blob);
+				item_blob = g_bytes_new_take(g_steal_pointer(&data), datasz);
+				fu_dump_bytes(G_LOG_DOMAIN, "TpmEvent", item_blob);
 			}
 			g_ptr_array_add(items, g_steal_pointer(&item));
 		}

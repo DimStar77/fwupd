@@ -56,14 +56,6 @@ fu_tpm_eventlog_hash_get_size(TPM2_ALG_ID hash_kind)
 	return 0;
 }
 
-gchar *
-fu_tpm_eventlog_blobstr(GBytes *blob)
-{
-	g_return_val_if_fail(blob != NULL, NULL);
-	return g_base64_encode((const guchar *)g_bytes_get_data(blob, NULL),
-			       g_bytes_get_size(blob));
-}
-
 GPtrArray *
 fu_tpm_eventlog_calc_checksums(GPtrArray *items, guint8 pcr, GError **error)
 {
@@ -91,14 +83,18 @@ fu_tpm_eventlog_calc_checksums(GPtrArray *items, guint8 pcr, GError **error)
 	 * hash that with the same algorithm */
 	for (guint i = 0; i < items->len; i++) {
 		FuTpmEventlogItem *item = g_ptr_array_index(items, i);
-		if (item->pcr != pcr)
+		FuTpmEventlogItemKind item_kind = fu_tpm_eventlog_item_get_kind(item);
+		guint8 item_pcr = fu_tpm_eventlog_item_get_pcr(item);
+		g_autoptr(GBytes) item_blob = fu_firmware_get_bytes(FU_FIRMWARE(item), NULL);
+
+		if (item_pcr != pcr)
 			continue;
 
 		/* if TXT is enabled then the first event for PCR0 should be a StartupLocality */
-		if (item->kind == FU_TPM_EVENTLOG_ITEM_KIND_NO_ACTION && item->pcr == 0 &&
-		    item->blob != NULL && i == 0) {
+		if (item_kind == FU_TPM_EVENTLOG_ITEM_KIND_NO_ACTION && item_pcr == 0 &&
+		    item_blob != NULL && i == 0) {
 			g_autoptr(FuStructTpmEfiStartupLocalityEvent) st_loc = NULL;
-			st_loc = fu_struct_tpm_efi_startup_locality_event_parse_bytes(item->blob,
+			st_loc = fu_struct_tpm_efi_startup_locality_event_parse_bytes(item_blob,
 										      0x0,
 										      NULL);
 			if (st_loc != NULL) {

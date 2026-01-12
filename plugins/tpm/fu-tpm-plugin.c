@@ -259,21 +259,27 @@ fu_tpm_plugin_eventlog_report_metadata(FuPlugin *plugin)
 
 	for (guint i = 0; i < self->ev_items->len; i++) {
 		FuTpmEventlogItem *item = g_ptr_array_index(self->ev_items, i);
+		FuTpmEventlogItemKind kind = fu_tpm_eventlog_item_get_kind(item);
 		g_autofree gchar *blobstr = NULL;
 		g_autofree gchar *checksum = NULL;
+		g_autoptr(GBytes) blob = fu_firmware_get_bytes(FU_FIRMWARE(item), NULL);
 
-		if (item->blob == NULL)
+		if (blob == NULL)
 			continue;
-		if (item->checksum_sha1 != NULL)
-			checksum = fu_bytes_to_string(item->checksum_sha1);
-		else if (item->checksum_sha256 != NULL)
-			checksum = fu_bytes_to_string(item->checksum_sha256);
-		else if (item->checksum_sha384 != NULL)
-			checksum = fu_bytes_to_string(item->checksum_sha384);
-		else
+		checksum = fu_firmware_get_checksum(FU_FIRMWARE(item), G_CHECKSUM_SHA1, NULL);
+		if (checksum == NULL) {
+			checksum =
+			    fu_firmware_get_checksum(FU_FIRMWARE(item), G_CHECKSUM_SHA256, NULL);
+		}
+		if (checksum == NULL) {
+			checksum =
+			    fu_firmware_get_checksum(FU_FIRMWARE(item), G_CHECKSUM_SHA384, NULL);
+		}
+		if (checksum == NULL)
 			continue;
-		g_string_append_printf(str, "0x%08x %s", item->kind, checksum);
-		blobstr = fu_tpm_eventlog_blobstr(item->blob);
+		g_string_append_printf(str, "0x%08x %s", kind, checksum);
+		blobstr = g_base64_encode((const guchar *)g_bytes_get_data(blob, NULL),
+					  g_bytes_get_size(blob));
 		if (blobstr != NULL)
 			g_string_append_printf(str, " [%s]", blobstr);
 		g_string_append(str, "\n");

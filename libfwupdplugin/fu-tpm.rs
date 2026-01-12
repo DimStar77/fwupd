@@ -1,7 +1,7 @@
 // Copyright 2023 Richard Hughes <richard@hughsie.com>
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
-#[derive(ToString)]
+#[derive(ToString, FromString)]
 #[repr(u32le)]
 enum FuTpmEventlogItemKind {
     PrebootCert = 0x00000000,

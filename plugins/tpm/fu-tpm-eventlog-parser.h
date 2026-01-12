@@ -21,5 +21,3 @@ fu_tpm_eventlog_parser_new(const guint8 *buf,
 			   gsize bufsz,
 			   FuTpmEventlogParserFlags flags,
 			   GError **error);
-void
-fu_tpm_eventlog_item_to_string(FuTpmEventlogItem *item, guint idt, GString *str);

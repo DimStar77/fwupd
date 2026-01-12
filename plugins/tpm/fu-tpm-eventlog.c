@@ -77,7 +77,7 @@ fu_tpm_eventlog_process(FuUtil *self, const gchar *fn, GError **error)
 		if (self->dump) {
 			g_autofree gchar *blobfn =
 			    g_strdup_printf("tpm-pcr%02u-%03u.bin", item->pcr, i);
-			if (!fu_bytes_set_contents(blobfn, item->blob, error))
+			if (!fu_bytes_set_contents(blobfn, item_blob, error))
 				return FALSE;
 		}
 	}
