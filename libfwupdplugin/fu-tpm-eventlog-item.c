@@ -94,7 +94,7 @@ fu_tpm_eventlog_item_set_kind(FuTpmEventlogItem *self, FuTpmEventlogItemKind kin
  *
  * Gets the PCR.
  *
- * Returns: (transfer none): value
+ * Returns: value
  *
  * Since: 2.1.1
  **/
