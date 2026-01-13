@@ -12,5 +12,5 @@
 
 G_DECLARE_FINAL_TYPE(FuTpmEventlogV1, fu_tpm_eventlog_v1, FU, TPM_EVENTLOG_V1, FuTpmEventlog)
 
-FuTpmEventlogV1 *
+FuTpmEventlog *
 fu_tpm_eventlog_v1_new(void);

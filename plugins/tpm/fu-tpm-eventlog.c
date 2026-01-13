@@ -8,12 +8,13 @@
 
 #include "config.h"
 
+#include <fwupdplugin.h>
+
 #include <glib/gi18n.h>
 #include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
 
 typedef struct {
 	gint pcr;
@@ -51,20 +52,27 @@ fu_tpm_eventlog_sort_cb(gconstpointer a, gconstpointer b)
 static gboolean
 fu_tpm_eventlog_process(FuUtil *self, const gchar *fn, GError **error)
 {
-	gsize bufsz = 0;
-	g_autofree guint8 *buf = NULL;
 	g_autoptr(GPtrArray) items = NULL;
+	g_autoptr(GInputStream) stream = NULL;
+	g_autoptr(FuFirmware) eventlog = NULL;
 	g_autoptr(GString) str = g_string_new(NULL);
 	gint max_pcr = 0;
 
 	/* parse this */
-	if (!g_file_get_contents(fn, (gchar **)&buf, &bufsz, error))
+	stream = fu_input_stream_from_path(fn, error);
+	if (stream == NULL)
 		return FALSE;
-	items = fu_tpm_eventlog_parser_new(buf, bufsz, FU_TPM_EVENTLOG_PARSER_FLAG_ALL_PCRS, error);
-	if (items == NULL)
+	eventlog = fu_firmware_new_from_gtypes(stream,
+					       0x0,
+					       FU_FIRMWARE_PARSE_FLAG_NONE,
+					       error,
+					       FU_TYPE_TPM_EVENTLOG_V2,
+					       FU_TYPE_TPM_EVENTLOG_V1,
+					       G_TYPE_INVALID);
+	if (eventlog == NULL)
 		return FALSE;
+	items = fu_firmware_get_images(eventlog);
 	g_ptr_array_sort(items, fu_tpm_eventlog_sort_cb);
-
 	for (guint i = 0; i < items->len; i++) {
 		FuTpmEventlogItem *item = g_ptr_array_index(items, i);
 		g_autofree gchar *tmp = NULL;
@@ -98,7 +106,8 @@ fu_tpm_eventlog_process(FuUtil *self, const gchar *fn, GError **error)
 	}
 	fwupd_codec_string_append(str, 0, "Reconstructed PCRs", "");
 	for (guint8 i = 0; i <= max_pcr; i++) {
-		g_autoptr(GPtrArray) pcrs = fu_tpm_eventlog_calc_checksums(items, i, NULL);
+		g_autoptr(GPtrArray) pcrs =
+		    fu_tpm_eventlog_calc_checksums(FU_TPM_EVENTLOG(eventlog), i, NULL);
 		if (pcrs == NULL)
 			continue;
 		for (guint j = 0; j < pcrs->len; j++) {
