@@ -13,7 +13,6 @@ plugin_builtin_tpm = static_library('fu_plugin_tpm',
     'fu-tpm-device.c',
     'fu-tpm-v1-device.c',
     'fu-tpm-v2-device.c',
-    'fu-tpm-eventlog-common.c',
   ],
   include_directories: plugin_incdirs,
   link_with: [
@@ -81,19 +80,3 @@ if get_option('tests')
   )
 
 endif
-
-executable(
-  'fwupdtpmevlog',
-  sources: [
-    'fu-tpm-eventlog.c',
-  ],
-  include_directories: plugin_incdirs,
-  dependencies: [
-      plugin_deps,
-      tpm2tss_tpm,
-  ],
-  link_with: [
-    plugin_libs,
-    plugin_builtin_tpm,
-  ],
-)

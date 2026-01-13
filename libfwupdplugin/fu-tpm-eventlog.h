@@ -16,4 +16,6 @@ struct _FuTpmEventlogClass {
 };
 
 GPtrArray *
-fu_tpm_eventlog_calc_checksums(FuTpmEventlog *self, guint8 pcr, GError **error);
+fu_tpm_eventlog_calc_checksums(FuTpmEventlog *self,
+			       guint8 pcr,
+			       GError **error) G_GNUC_WARN_UNUSED_RESULT G_GNUC_NON_NULL(1);

@@ -49,13 +49,14 @@ fu_tpm_eventlog_v2_parse(FuFirmware *firmware,
 			 FuFirmwareParseFlags flags,
 			 GError **error)
 {
-	//	FuTpmEventlogV2 *self = FU_TPM_EVENTLOG_V2(firmware);
 	guint32 hdrsz = 0x0;
 	gsize streamsz = 0;
 	g_autoptr(FuStructTpmEventLog2Hdr) st_hdr = NULL;
 
 	/* look for TCG v2 signature */
-	st_hdr = fu_struct_tpm_event_log2_hdr_parse_stream(stream, 0x0, error);
+	st_hdr = fu_struct_tpm_event_log2_hdr_parse_stream(stream,
+							   FU_STRUCT_TPM_EVENT_LOG1_ITEM_SIZE,
+							   error);
 	if (st_hdr == NULL)
 		return FALSE;
 

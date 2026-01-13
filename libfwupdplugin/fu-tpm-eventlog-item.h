@@ -13,6 +13,9 @@
 
 G_DECLARE_FINAL_TYPE(FuTpmEventlogItem, fu_tpm_eventlog_item, FU, TPM_EVENTLOG_ITEM, FuFirmware)
 
+FuTpmEventlogItem *
+fu_tpm_eventlog_item_new(void) G_GNUC_WARN_UNUSED_RESULT;
+
 FuTpmEventlogItemKind
 fu_tpm_eventlog_item_get_kind(FuTpmEventlogItem *self) G_GNUC_NON_NULL(1);
 void
@@ -22,15 +25,11 @@ guint8
 fu_tpm_eventlog_item_get_pcr(FuTpmEventlogItem *self) G_GNUC_NON_NULL(1);
 void
 fu_tpm_eventlog_item_set_pcr(FuTpmEventlogItem *self, guint8 pcr) G_GNUC_NON_NULL(1);
-
-FuTpmEventlogItem *
-fu_tpm_eventlog_item_new(void) G_GNUC_WARN_UNUSED_RESULT; // FIXME: set PCR here?
-
-// private?
 void
 fu_tpm_eventlog_item_add_checksum(FuTpmEventlogItem *self,
 				  GChecksumType csum_kind,
 				  GBytes *checksum) G_GNUC_NON_NULL(1, 3);
 GBytes *
-fu_tpm_eventlog_item_get_checksum(FuTpmEventlogItem *self, GChecksumType csum_kind, GError **error)
-    G_GNUC_NON_NULL(1);
+fu_tpm_eventlog_item_get_checksum(FuTpmEventlogItem *self,
+				  GChecksumType csum_kind,
+				  GError **error) G_GNUC_WARN_UNUSED_RESULT G_GNUC_NON_NULL(1);

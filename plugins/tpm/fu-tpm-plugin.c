@@ -6,7 +6,6 @@
 
 #include "config.h"
 
-#include "fu-tpm-eventlog-common.h"
 #include "fu-tpm-plugin.h"
 #include "fu-tpm-v1-device.h"
 #include "fu-tpm-v2-device.h"

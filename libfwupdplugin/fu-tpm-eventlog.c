@@ -152,16 +152,6 @@ fu_tpm_eventlog_init(FuTpmEventlog *self)
 }
 
 static void
-fu_tpm_eventlog_finalize(GObject *object)
-{
-	//	FuTpmEventlog *self = FU_TPM_EVENTLOG(object);
-	//	FuTpmEventlogPrivate *priv = GET_PRIVATE(self);
-	G_OBJECT_CLASS(fu_tpm_eventlog_parent_class)->finalize(object);
-}
-
-static void
 fu_tpm_eventlog_class_init(FuTpmEventlogClass *klass)
 {
-	GObjectClass *object_class = G_OBJECT_CLASS(klass);
-	object_class->finalize = fu_tpm_eventlog_finalize;
 }
